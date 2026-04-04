@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Exercises</title>
+    <style>
+        body { display: flex; flex-direction: column; height: 50vh; margin: 0; padding: 20px; font-family: Georgia, sans-serif; }
+        .header-1 { font-size: 26px; }
+        .header-2 { font-size: 18px; }
+        .sentence { font-size: 18px; }
+        form { display: flex; flex-direction: column; margin-top: 20px; font-size: 18px; }
+        textarea { margin-top: 12px; }
+        label { font-family: Georgia, sans-serif; font-size: 16px; }
+        .error { color: red; margin-top: 10px; font-family: Georgia, sans-serif; font-style: Bold; }
+        .success { color: rgb(80, 200, 120); font-family: Georgia, sans-serif; font-style: italic; }
+        .exercise { text-align: left; margin-bottom: 20px; padding: 10px; }
+        .submit-button-container { display: flex; justify-content: center; align-items: flex-start; padding-bottom: 30px; gap: 20px; }
+        .submit-button { width: 400px; height: 60px; background-color: rgb(235,225,200); padding: 10px; border-radius: 5px; border: none; cursor: pointer; font-family: Georgia, sans-serif; font-size: 16px; }
+        .other-button { border-radius: 100%; width: 50px; height: 50px; }
+        .button-with-text { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; word-wrap: break-word; width: 350px; height: 100px; }
+        .button-text { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 18px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.3.js"
+        integrity="sha256-nQLuAZGRRcILA+6dMBOvcRh5Pe310sBpanc6+QBmyVM="
+        crossorigin="anonymous"></script>
+    <script>
+    $(document).ready(function() {
+
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
+                    xhr.setRequestHeader('X-CSRFToken', $('[name=csrfmiddlewaretoken]').val());
+                }
+            }
+        });
+
+        $('#exercises-form').submit(function(event) {
+            event.preventDefault();
+            $('#exercises-form .exercise').each(function() {
+                var id = $(this).attr('id');
+                var answer = '';
+                if ($(this).find('input[name="answer"]').length > 0) {
+                    answer = $(this).find('input[name="answer"]').val() || '';
+                } else if ($(this).find('select[name="answer"]').length > 0) {
+                    answer = $(this).find('select[name="answer"]').val() || '';
+                }
+                if (answer !== '') {
+                    $.post('/take_answers/', { sentence_id: id, answer: answer })
+                        .done(function(response) {
+                            if (response.status === 'success') {
+                                $('#' + response.id).find('.status').text('Ответ правильный');
+                            } else {
+                                $('#' + response.id).find('.status').text('Ответ неправильный');
+                            }
+                        })
+                        .fail(function() {
+                            console.log('Error occurred while checking answers.');
+                        });
+                }
+            });
+        });
+    });
+    </script>
+</head>
+<body>
+    <h1 style="text-align: center;">Сгенерированные упражнения</h1>
+    <form id="exercises-form" method="post">
+        {% csrf_token %}
+        {% for sentence, form, id in sentence_form_pairs %}
+            <div class="exercise" id="{{ id }}">
+                <p class="sentence">{{ sentence.sentence }}</p>
+                {% if sentence.title != "nan" %}
+                    <p><strong>{{ sentence.title }}</strong></p>
+                {% endif %}
+                {% if sentence.description != "nan" %}
+                    <p><em>{{ sentence.description }}</em></p>
+                {% endif %}
+                <div class="form">
+                    {% if form %}{{ form.as_p }}{% endif %}
+                </div>
+                <p class="status"></p>
+            </div>
+        {% empty %}
+            <p>No exercises generated yet.</p>
+        {% endfor %}
+        <div class="submit-button-container">
+            <div class="button-with-text">
+                <button type="button" class="other-button" onclick="location.href='/write_tasks'"></button>
+                <div class="button-text">Сгенерировать новые упражнения из этого текста</div>
+            </div>
+            <input type="submit" value="Проверить ответы" class="submit-button"/>
+            <div class="button-with-text">
+                <button type="button" class="other-button" onclick="location.href='/'"></button>
+                <div class="button-text">Сгенерировать упражнения из нового текста</div>
+            </div>
+        </div>
+    </form>
+</body>
+</html>

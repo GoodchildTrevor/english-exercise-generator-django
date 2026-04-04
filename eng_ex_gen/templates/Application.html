@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>'Generator'</title>
+     <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            flex-direction: column;
+            margin-top: 3.5vh;
+            font-family: Georgia, sans-serif;
+        }
+        .header-1 { font-size: 4vw; }
+        .header-2 { font-size: 2vw; margin-top: 4vh; }
+        form {
+            display: flex;
+            width: 120vh;
+            flex-direction: column;
+            margin-top: 3vh;
+        }
+        textarea { margin-top: 12px; font-size: 14px; font-family: Georgia, sans-serif; }
+        label { font-family: Georgia, sans-serif; font-size: 16px; }
+        .error { color: red; font-family: Georgia, sans-serif; font-style: Bold; font-size: 1.7vw; margin-top: 1.5vh; }
+        .success { color: rgb(80, 200, 120); font-family: Georgia, sans-serif; font-style: italic; font-size: 1.7vw; margin-top: 1.5vh; }
+        .main_button { background-color: rgb(230,230,205); padding: 10px; border-radius: 5px; border: none; cursor: pointer; font-family: Georgia, sans-serif; font-size: 16px; }
+        .upwriting { font-family: Georgia, sans-serif; font-size: 1.7vw; text-align: center; }
+        .slider-container { display: flex; flex-direction: column; align-items: center; width: 80%; margin: 20px 0; }
+        .slider { width: 50%; margin-top: 1.5vh; }
+        .labels { display: flex; justify-content: space-between; width: 50%; padding: 0 1.5vh; }
+    </style>
+</head>
+<body>
+    <div class="header-1">Генератор упражнений по английскому</div>
+    <div class="header-2">Уровень сложности</div>
+    <div class="slider-container">
+        <input type="range" min="1" max="3" value="2" class="slider" id="difficulty" name="difficulty">
+        <div class="labels">
+            <label for="difficulty">Лёгкий</label>
+            <label for="difficulty">Средний</label>
+            <label for="difficulty">Сложный</label>
+        </div>
+    </div>
+    <form id="text-form">
+        {% csrf_token %}
+        <label for="textinput" class="upwriting">Вставьте текст для создания упражнений (не больше 30 предложений):</label>
+        <textarea id="textinput" name="textinput" rows="10" cols="50"></textarea>
+        <input type="submit" value="Let's go!" class="main_button">
+    </form>
+    <div id="error" class="error"></div>
+</body>
+</html>
+
+<script src="https://code.jquery.com/jquery-3.6.3.js"
+    integrity="sha256-nQLuAZGRRcILA+6dMBOvcRh5Pe310sBpanc6+QBmyVM="
+    crossorigin="anonymous"></script>
+<script>
+$(document).ready(function(){
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
+                xhr.setRequestHeader('X-CSRFToken', $('[name=csrfmiddlewaretoken]').val());
+            }
+        }
+    });
+
+    var difficultyLevels = {
+        1: "Это уровень для начинающих.",
+        2: "Это средний уровень.",
+        3: "Это сложный уровень."
+    };
+
+    $("#difficulty").on('input change', function() {
+        $('#difficulty-description').text(difficultyLevels[$(this).val()]);
+    });
+
+    $("#text-form").on('submit', function(e){
+        e.preventDefault();
+        $.ajax({
+            url: "{% url 'text_view' %}",
+            type: 'POST',
+            data: {
+                text: $("#textinput").val(),
+                difficulty: $("#difficulty").val()
+            },
+            dataType: 'json',
+            success: function(data){
+                if(data.success){
+                    $("#error").removeClass('error').html('Ваш текст принят! Генерируются упражнения').addClass('success');
+                    setTimeout(function() {
+                        $("#error").html("").removeClass('success');
+                        window.location.href = "{% url 'write_tasks' %}";
+                    }, 6000);
+                } else {
+                    if (data.error === "TooManySentencesError") {
+                        $("#error").html("В вашем тексте не должно быть больше 30 предложений.");
+                    } else if (data.error === "NoEnglishSentenceError") {
+                        $("#error").html("Ваш текст должен содержать хотя бы одно предложение на английском.");
+                    } else {
+                        $("#error").html("Что-то пошло не так. Попробуйте снова.");
+                    }
+                }
+            },
+            error: function(request, status, error){
+                console.log("Request: ", request, "Status: ", status, "Error: ", error);
+            }
+        });
+    });
+});
+</script>
