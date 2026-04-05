@@ -11,23 +11,11 @@ import pyinflect
 
 splitter = SentenceSplitter(language='en')
 
-_model = None
-_nlp = None
-
-
-def get_model():
-    global _model
-    if _model is None:
-        _model = api.load("glove-wiki-gigaword-100")
-    return _model
-
-
-def get_nlp():
-    global _nlp
-    if _nlp is None:
-        _nlp = spacy.load('en_core_web_sm')
-    return _nlp
-
+# Модели загружаются при старте один раз и шарятся между воркерами через --preload
+print("Loading NLP models...")
+model = api.load("glove-wiki-gigaword-100")
+nlp = spacy.load('en_core_web_sm')
+print("NLP models loaded.")
 
 dependencies = ['predet', 'ROOT', 'amod', 'nsubj', 'pobj', 'dobj', 'ccomp']
 dependencies_full = ['subject', 'predicate', 'adjectival modifier', 'nominal subject',
@@ -36,8 +24,8 @@ main_pos = ['NOUN', 'VERB', 'ADV', 'ADJ']
 main_pos_names = ['noun', 'verb', 'adverb', 'adjective']
 
 types = ['select_sent', 'select_pos', 'select_word', 'verb_form', 'missing_word', 'noun_phrases']
-description = ['\u041a\u0430\u043a\u043e\u0435 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u0432\u0435\u0440\u043d\u043e?', '\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u0435 \u0447\u0430\u0441\u0442\u044c \u0440\u0435\u0447\u0438', '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u043b\u043e\u0432\u043e',
-               '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u043d\u0443\u044e \u0444\u043e\u0440\u043c\u0443 \u0433\u043b\u0430\u0433\u043e\u043b\u0430', '\u041a\u0430\u043a\u043e\u0435 \u0441\u043b\u043e\u0432\u043e \u043f\u0440\u043e\u043f\u0443\u0449\u0435\u043d\u043e?', '\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u0435 \u0447\u0430\u0441\u0442\u044c \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f']
+description = ['Какое предложение верно?', 'Определите часть речи', 'Выберите слово',
+               'Выберите верную форму глагола', 'Какое слово пропущено?', 'Определите часть предложения']
 
 
 class TooManySentencesError(Exception):
@@ -62,8 +50,8 @@ class Processing:
         proc_sentences = splitter.split(text=raw_text)
         if len(proc_sentences) > 30:
             raise TooManySentencesError(
-                f'\u0412 \u0432\u0430\u0448\u0435\u043c \u0442\u0435\u043a\u0441\u0442\u0435 \u043d\u0435 \u0434\u043e\u043b\u0436\u043d\u043e \u0431\u044b\u0442\u044c \u0431\u043e\u043b\u044c\u0448\u0435 30 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0439. '
-                f'\u0421\u0435\u0439\u0447\u0430\u0441 \u0438\u0445 {len(proc_sentences)}, \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0442\u0435\u043a\u0441\u0442 \u0441\u043d\u043e\u0432\u0430.'
+                f'В вашем тексте не должно быть больше 30 предложений. '
+                f'Сейчас их {len(proc_sentences)}, введите текст снова.'
             )
         return proc_sentences
 
@@ -71,7 +59,7 @@ class Processing:
         has_english = any(self.check_language(sentence) for sentence in raw_sentences)
         if not has_english:
             raise NoEnglishSentenceError(
-                '\u0412\u0430\u0448 \u0442\u0435\u043a\u0441\u0442 \u0434\u043e\u043b\u0436\u0435\u043d \u0441\u043e\u0434\u0435\u0440\u0436\u0430\u0442\u044c \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u043d\u043e \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043d\u0430 \u0430\u043d\u0433\u043b\u0438\u0439\u0441\u043a\u043e\u043c \u044f\u0437\u044b\u043a\u0435.'
+                'Ваш текст должен содержать хотя бы одно предложение на английском языке.'
             )
         return has_english
 
@@ -82,7 +70,6 @@ class Tasks:
         self.processing = processing
 
     def random_words(self, original_word):
-        model = get_model()
         similar_words = model.similar_by_word(original_word)
         selected_words = [word[0] for word in similar_words[:5] if word[0][0].isalpha()]
         selected_words = random.sample(selected_words, 3)
@@ -91,7 +78,6 @@ class Tasks:
         return selected_words
 
     def random_sentence(self, input_sentence):
-        model = get_model()
         similar_sentences = [input_sentence]
         for _ in range(3):
             similar_sentence = ''
@@ -126,7 +112,6 @@ class Tasks:
         return random_wrd_cnstr, random_right_dep, options
 
     def define_random_word(self, words, max_attempts=50):
-        model = get_model()
         candidates = [w for w in words if w in model and len(w) > 3]
         if not candidates:
             return random.choice(words)
@@ -136,8 +121,6 @@ class Tasks:
         return sentence.replace(f' {r_word}', ' _____ ')
 
     def make_tasks(self, raw_sentences, difficulty):
-        nlp = get_nlp()
-        model = get_model()
         level = int(difficulty)
         df = pd.DataFrame(raw_sentences, columns=['sentence'])
         df = df[df['sentence'].str.strip() != ''].reset_index()
