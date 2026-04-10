@@ -3,6 +3,7 @@ services:
     build:
       context: ./eng_ex_gen
       dockerfile: Dockerfile
+    container_name: engexgen
     restart: unless-stopped
     ports:
       - "8000:8000"
