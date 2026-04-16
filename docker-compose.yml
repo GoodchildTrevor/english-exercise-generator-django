@@ -11,6 +11,8 @@ services:
       - ./eng_ex_gen/.env
     volumes:
       - sqlite_data:/app/db
+      - gensim_data:/root/gensim-data
 
 volumes:
   sqlite_data:
+  gensim_data:
