@@ -124,6 +124,7 @@ def write_tasks(request):
     return render(request, 'Exercises.html', context={'sentence_form_pairs': sentence_form_pairs})
 
 
+@csrf_exempt
 def take_answers(request):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
