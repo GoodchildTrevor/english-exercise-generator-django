@@ -4,6 +4,7 @@ from django import forms
 
 from generator.models import Sentences
 from generator.utils import Processing, Tasks, TooManySentencesError, NoEnglishSentenceError
+from django.views.decorators.csrf import csrf_exempt
 
 import pandas as pd
 import numpy as np
@@ -34,6 +35,7 @@ def about_page(request):
     return render(request, 'About.html')
 
 
+@csrf_exempt
 def text_view(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)

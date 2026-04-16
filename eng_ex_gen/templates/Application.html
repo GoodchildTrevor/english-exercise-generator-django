@@ -82,9 +82,11 @@ $(document).ready(function(){
         $.ajax({
             url: "{% url 'text_view' %}",
             type: 'POST',
+            headers: {'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()},
             data: {
                 text: $("#textinput").val(),
-                difficulty: $("#difficulty").val()
+                difficulty: $("#difficulty").val(),
+                csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
             },
             dataType: 'json',
             success: function(data){
