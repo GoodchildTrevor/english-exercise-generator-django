@@ -124,10 +124,10 @@ class Tasks:
         level = int(difficulty)
         df = pd.DataFrame(raw_sentences, columns=['sentence'])
         df = df[df['sentence'].str.strip() != ''].reset_index()
-        df['type'] = np.nan
-        df['description'] = np.nan
-        df['options'] = np.nan
-        df['answer'] = np.nan
+        df['type'] = None
+        df['description'] = None
+        df['options'] = None
+        df['answer'] = None
 
         for index, row in df.iterrows():
             list_of_words = []
