@@ -26,16 +26,9 @@
     <script>
     $(document).ready(function() {
 
-        $.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
-                    xhr.setRequestHeader('X-CSRFToken', $('[name=csrfmiddlewaretoken]').val());
-                }
-            }
-        });
-
         $('#exercises-form').submit(function(event) {
             event.preventDefault();
+            var csrfToken = $('[name=csrfmiddlewaretoken]').val();
             $('#exercises-form .exercise').each(function() {
                 var id = $(this).attr('id');
                 var answer = '';
@@ -45,7 +38,12 @@
                     answer = $(this).find('select[name="answer"]').val() || '';
                 }
                 if (answer !== '') {
-                    $.post('/take_answers/', { sentence_id: id, answer: answer })
+                    $.ajax({
+                        url: '/take_answers/',
+                        type: 'POST',
+                        data: { sentence_id: id, answer: answer },
+                        headers: { 'X-CSRFToken': csrfToken }
+                    })
                         .done(function(response) {
                             if (response.status === 'success') {
                                 $('#' + response.id).find('.status').text('Ответ правильный');
